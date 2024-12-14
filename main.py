@@ -1,7 +1,6 @@
 import secrets
 from datetime import datetime, timezone, timedelta
-from typing import NamedTuple, Literal
-
+from enum import StrEnum
 import requests
 
 AUTH_CODE = str(input())
@@ -9,10 +8,19 @@ AUTH_CODE = str(input())
 MIN_UNIT_COST = 0.8
 
 
-Stuff = Literal['gb', 'min']
+class TrafficType(StrEnum):
+    VOICE = 'voice'
+    DATA = 'data'
+    SMS = 'sms'
 
 
-class Emoji(NamedTuple):
+class Stuff(StrEnum):
+    GB = 'gb'
+    MIN = 'min'
+    SMS = 'sms'
+
+
+class Emoji(StrEnum):
     DEVIL = 'devil'
     BOMB = 'bomb'
     CAT = 'cat'
