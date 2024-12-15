@@ -40,6 +40,7 @@ def create_order(
     value: int,
     cost: int | None,
     staff: Stuff,
+    traffic_type: TrafficType,
 ):
     refer = 'my'
     if not cost:
@@ -51,7 +52,7 @@ def create_order(
         },
         "cost": {
             "amount": cost,
-            "currency": "rub"
+            "currency": traffic_type
         },
         "trafficType": "voice"
     }
