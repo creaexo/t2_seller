@@ -157,13 +157,15 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
 
 
 def start_raise_my_orders(
-    number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int
+    number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int, frequency: int
 ):
     orders = get_my_orders(number, auth_code).get('data')
     active_orders = [
         order for order in orders
         if order.get('status') == 'active' and order.get('trafficType') == traffic_type
     ]
+    if not active_orders or raise_balance <= 0:
+        return
     active_orders_ids = {order['id'] for order in active_orders}
     for order in active_orders:
         actual_orders = get_orders(
@@ -184,5 +186,7 @@ def start_raise_my_orders(
             if raise_balance <= 0:
                 break
         else:
-            print('Пока итак в топе')
-        time.sleep(20)
+            active_orders.insert(0, order)
+            print(f'Пока есть лот в топе.')
+        time.sleep(frequency)
+    start_raise_my_orders(number, auth_code, traffic_type, raise_balance, frequency)
