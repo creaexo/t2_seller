@@ -93,6 +93,47 @@ def get_local_time(time_zone: int):
     return time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + time.strftime('%z')
 
 
+def raise_order(
+    number: str,
+    order_id: str,
+    auth_code: str,
+):
+    refer = 'my'
+    json = {'lotId': order_id}
+    return requests.put(
+        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/premium',
+        json=json,
+        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+    )
+
+
+def get_my_orders(
+    auth_code: str,
+    number: str,
+):
+    refer = 'my'
+    return requests.get(
+        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created',
+        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+    ).json()
+
+
+def get_orders(
+    number: str,
+    auth_code: str,
+    traffic_type: TrafficType,
+    volume: int,
+    cost: int,
+    offset: int = 0,
+    limit: int = 10,
+):
+    refer = 'internet'
+    return requests.get(
+        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots?trafficType={traffic_type}&volume={volume}&cost={cost}&offset={offset}&limit={limit}',
+        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+    ).json()
+
+
 def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
     return {
         'Accept': 'application/json, text/plain, */*',
