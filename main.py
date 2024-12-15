@@ -110,8 +110,8 @@ def raise_order(
 
 
 def get_my_orders(
-    auth_code: str,
     number: str,
+    auth_code: str,
 ):
     refer = 'my'
     return requests.get(
@@ -159,7 +159,7 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
 def start_raise_my_orders(
     number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int
 ):
-    orders = get_my_orders(auth_code).get('data')
+    orders = get_my_orders(number, auth_code).get('data')
     active_orders = [
         order for order in orders
         if order.get('status') == 'active' and order.get('trafficType') == traffic_type
