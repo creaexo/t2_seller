@@ -1,5 +1,6 @@
 import os
 import secrets
+import time
 from datetime import datetime, timezone, timedelta
 from enum import StrEnum
 import requests
@@ -153,3 +154,35 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
         'x-request-id': secrets.token_hex(20),
         'x-user-local-time': get_local_time(time_zone=time_zone),
     }
+
+
+def start_raise_my_orders(
+    number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int
+):
+    orders = get_my_orders(auth_code).get('data')
+    active_orders = [
+        order for order in orders
+        if order.get('status') == 'active' and order.get('trafficType') == traffic_type
+    ]
+    active_orders_ids = {order['id'] for order in active_orders}
+    for order in active_orders:
+        actual_orders = get_orders(
+            number,
+            auth_code,
+            traffic_type,
+            order.get('volume').get('value'),
+            order.get('cost').get('amount')
+        ).get('data')
+        actual_orders_ids = {
+            o.get('id') for o in actual_orders
+        }
+        if not (active_orders_ids & actual_orders_ids):
+            order_id = order.get('id')
+            print(f'Продвижение для: {order_id}')
+            raise_order(number, order_id, auth_code)
+            raise_balance -= 5
+            if raise_balance <= 0:
+                break
+        else:
+            print('Пока итак в топе')
+        time.sleep(20)
