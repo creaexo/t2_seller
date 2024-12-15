@@ -159,6 +159,17 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
 def start_raise_my_orders(
     number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int, frequency: int
 ):
+    """
+    Запуск продвижения всех своих лотов.
+
+    :param number: Номер телефона
+    :param auth_code: Код аутентификации
+    :param traffic_type: Тип трафика
+    :param raise_balance: Баланс на продвижение. Этот параметр позволяет исключить большие потери на
+    продвижение во время небольшого спроса, ведь каждый вывод в топ стоит 5р. Больше указанной суммы
+    не будет потрачено.
+    :param frequency: Периодичность продвижения и проверок, находится ли лот в топе.
+    """
     orders = get_my_orders(number, auth_code).get('data')
     active_orders = [
         order for order in orders
