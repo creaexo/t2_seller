@@ -18,10 +18,12 @@ class TrafficType(StrEnum):
     SMS = 'sms'
 
 
-class Stuff(StrEnum):
+class UOM(StrEnum):
     GB = 'gb'
+    MB = 'mb'
     MIN = 'min'
     SMS = 'sms'
+    PCS = 'pcs'
 
 
 class Emoji(StrEnum):
@@ -40,7 +42,7 @@ def create_order(
     auth_code: str,
     value: int,
     cost: int | None,
-    staff: Stuff,
+    staff: UOM,
     traffic_type: TrafficType,
 ):
     refer = 'my'
