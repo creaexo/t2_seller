@@ -3,9 +3,16 @@ import secrets
 import time
 from datetime import datetime, timezone, timedelta
 from enum import StrEnum
+from typing import Final
+
 import requests
 
-AUTH_CODE = os.environ.get('T2_AUTH_CODE') or str(input('Код авторизации: '))
+AUTH_CODE: Final = os.environ.get('T2_AUTH_CODE') or str(input('Код авторизации: '))
+DEFAULT_TIMEZONE: Final = 5
+MIN_UNIT_COST: Final = 0.8
+SEC_CH_UA: Final = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"'
+UA: Final = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
 
 MIN_UNIT_COST = 0.8
 SEC_CH_UA = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"'
@@ -62,7 +69,7 @@ def create_order(
     return requests.put(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created',
         json=json,
-        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
     ).json()
 
 
@@ -88,7 +95,7 @@ def update_order(
     return requests.patch(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created/{order_id}',
         json=json,
-        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
     ).json()
 
 
@@ -107,7 +114,7 @@ def raise_order(
     return requests.put(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/premium',
         json=json,
-        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
     )
 
 
@@ -118,7 +125,7 @@ def get_my_orders(
     refer = 'stock-exchange/my'
     return requests.get(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created',
-        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
     ).json()
 
 
@@ -134,7 +141,7 @@ def get_orders(
     refer = 'internet'
     return requests.get(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots?trafficType={traffic_type}&volume={volume}&cost={cost}&offset={offset}&limit={limit}',
-        headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
     ).json()
 
 
