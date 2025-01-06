@@ -1,61 +1,18 @@
-import os
 import secrets
 import time
 from datetime import datetime, timezone, timedelta
-from enum import StrEnum
-from typing import Final
 
 import requests
-from pydantic import BaseModel
 
-AUTH_CODE: Final = os.environ.get('T2_AUTH_CODE') or str(input('Код авторизации: '))
-DEFAULT_TIMEZONE: Final = 5
-MIN_UNIT_COST: Final = 0.8
-SEC_CH_UA: Final = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"'
-UA: Final = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-
-
-class Regions(StrEnum):
-    EKT = 'EKT'
-
-
-class Statuses(StrEnum):
-    ACTIVE = 'active'
-    BOUGHT = 'bought'
-    EXPIRED = 'expired'
-    REVOKED = 'revoked'
-    ERROR = 'error'
-
-
-class TrafficType(StrEnum):
-    VOICE = 'voice'
-    DATA = 'data'
-    SMS = 'sms'
-
-
-class UOM(StrEnum):
-    GB = 'gb'
-    MB = 'mb'
-    MIN = 'min'
-    SMS = 'sms'
-    PCS = 'pcs'
-
-
-class Emoji(StrEnum):
-    DEVIL = 'devil'
-    BOMB = 'bomb'
-    CAT = 'cat'
-    COOL = 'cool'
-    RICH = 'rich'
-    SCREAM = 'scream'
-    TONGUE = 'tongue'
-    ZIPPED = 'zipped'
-
-
-class AvailableForSaleOum(BaseModel):
-    min: int = 0
-    gb: int = 0
-    sms: int = 0
+from const import MIN_UNIT_COST, UA, DEFAULT_TIMEZONE, SEC_CH_UA
+from models import (
+    UOM,
+    TrafficType,
+    AvailableForSaleOum,
+    Statuses,
+    Emoji,
+    Regions,
+)
 
 
 def create_order(
