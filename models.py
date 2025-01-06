@@ -4,7 +4,8 @@ from pydantic import BaseModel
 
 
 class Regions(StrEnum):
-    EKT = 'EKT'
+    """Регион абонента"""
+    EKT = 'ekt'
 
 
 class Statuses(StrEnum):

@@ -22,6 +22,7 @@ def create_order(
     cost: int | None,
     staff: UOM,
     traffic_type: TrafficType,
+    region: Regions,
 ):
     refer = 'stock-exchange/my'
     if not cost:
@@ -38,9 +39,9 @@ def create_order(
         "trafficType": "voice"
     }
     return requests.put(
-        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created',
+        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots/created',
         json=json,
-        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     ).json()
 
 
@@ -51,6 +52,7 @@ def update_order(
     value: int,
     cost: int | None,
     emoji: list[Emoji | None],
+    region: Regions,
 ):
     refer = 'stock-exchange/my'
     if not cost:
@@ -64,9 +66,9 @@ def update_order(
         }
     }
     return requests.patch(
-        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created/{order_id}',
+        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots/created/{order_id}',
         json=json,
-        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     ).json()
 
 
@@ -79,24 +81,26 @@ def raise_order(
     number: str,
     order_id: str,
     auth_code: str,
+    region: Regions,
 ):
     refer = 'stock-exchange/my'
     json = {'lotId': order_id}
     return requests.put(
-        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/premium',
+        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots/premium',
         json=json,
-        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     )
 
 
 def get_my_orders(
     number: str,
     auth_code: str,
+    region: Regions,
 ):
     refer = 'stock-exchange/my'
     return requests.get(
-        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created',
-        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots/created',
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     ).json()
 
 
@@ -106,17 +110,18 @@ def get_orders(
     traffic_type: TrafficType,
     volume: int,
     cost: int,
+    region: Regions,
     offset: int = 0,
     limit: int = 10,
 ):
     refer = 'internet'
     return requests.get(
-        f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots?trafficType={traffic_type}&volume={volume}&cost={cost}&offset={offset}&limit={limit}',
-        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots?trafficType={traffic_type}&volume={volume}&cost={cost}&offset={offset}&limit={limit}',
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     ).json()
 
 
-def get_my_traffic(number: str, auth_code: str, region: str):
+def get_my_traffic(number: str, auth_code: str, region: Regions):
     """
     Получить весь трафик. Сумма доступного и недоступного для продажи трафика.
 
@@ -127,12 +132,12 @@ def get_my_traffic(number: str, auth_code: str, region: str):
     """
     refer = 'lk/remains'
     return requests.get(
-        f'https://ekt.t2.ru/api/subscribers/{number}/site{region}/rests',
-        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+        f'https://{region}.t2.ru/api/subscribers/{number}/site{region.upper()}/rests',
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     ).json()
 
 
-def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
+def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str, region: Regions):
     return {
         'Accept': 'application/json, text/plain, */*',
         'accept-encoding': 'zstd',
@@ -141,7 +146,7 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
         'cache-control': 'no-cache',
         'pragma': 'no-cache',
         'priority': 'u=1, i',
-        'referer': f'https://ekt.t2.ru/{refer}',
+        'referer': f'https://{region}.t2.ru/{refer}',
         'sec-ch-ua': sec_ch_ua,
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
@@ -153,7 +158,7 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
 
 
 def start_raise_my_orders(
-    number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int, frequency: int
+    number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int, frequency: int, region: Regions
 ):
     """
     Запуск продвижения всех своих лотов.
@@ -165,8 +170,9 @@ def start_raise_my_orders(
     продвижение во время небольшого спроса, ведь каждый вывод в топ стоит 5р. Больше указанной суммы
     не будет потрачено.
     :param frequency: Периодичность продвижения и проверок, находится ли лот в топе.
+    :param region: Регион.
     """
-    orders = get_my_orders(number, auth_code).get('data')
+    orders = get_my_orders(number, auth_code, region).get('data')
     active_orders = [
         order for order in orders
         if order.get('status') == Statuses.ACTIVE and order.get('trafficType') == traffic_type
@@ -180,7 +186,8 @@ def start_raise_my_orders(
             auth_code,
             traffic_type,
             order.get('volume').get('value'),
-            order.get('cost').get('amount')
+            order.get('cost').get('amount'),
+            region
         ).get('data')
         actual_orders_ids = {
             o.get('id') for o in actual_orders
@@ -188,7 +195,7 @@ def start_raise_my_orders(
         if not (active_orders_ids & actual_orders_ids):
             order_id = order.get('id')
             print(f'Продвижение для: {order_id}')
-            raise_order(number, order_id, auth_code)
+            raise_order(number, order_id, auth_code, region)
             raise_balance -= 5
             if raise_balance <= 0:
                 break
@@ -196,17 +203,17 @@ def start_raise_my_orders(
             active_orders.insert(0, order)
             print(f'Пока есть лот в топе.')
         time.sleep(frequency)
-    start_raise_my_orders(number, auth_code, traffic_type, raise_balance, frequency)
+    start_raise_my_orders(number, auth_code, traffic_type, raise_balance, frequency, region)
 
 
-def get_available_for_sale_traffic(number: str, auth_code: str, region: str) -> AvailableForSaleOum:
+def get_available_for_sale_traffic(number: str, auth_code: str, region: Regions) -> AvailableForSaleOum:
     """
     Получить количество доступного для продажи трафика в этом абонентском месяце.
 
-    :param number: Номер телефона
-    :param auth_code: Код аутентификации
-    :param region: Регион. Доступные значения хранятся в классе Regions
-    :return: Количество доступного для продажи трафика
+    :param number: Номер телефона.
+    :param auth_code: Код аутентификации.
+    :param region: Регион.
+    :return: Количество доступного для продажи трафика.
     """
     my_traffic = get_my_traffic(number, auth_code, region)['data']
     available_traffic = AvailableForSaleOum()
