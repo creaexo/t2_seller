@@ -19,6 +19,14 @@ class Regions(StrEnum):
     EKT = 'EKT'
 
 
+class Statuses(StrEnum):
+    ACTIVE = 'active'
+    BOUGHT = 'bought'
+    EXPIRED = 'expired'
+    REVOKED = 'revoked'
+    ERROR = 'error'
+
+
 class TrafficType(StrEnum):
     VOICE = 'voice'
     DATA = 'data'
@@ -204,7 +212,7 @@ def start_raise_my_orders(
     orders = get_my_orders(number, auth_code).get('data')
     active_orders = [
         order for order in orders
-        if order.get('status') == 'active' and order.get('trafficType') == traffic_type
+        if order.get('status') == Statuses.ACTIVE and order.get('trafficType') == traffic_type
     ]
     if not active_orders or raise_balance <= 0:
         return
