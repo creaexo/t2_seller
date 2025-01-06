@@ -15,9 +15,6 @@ SEC_CH_UA: Final = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v
 UA: Final = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
 
-MIN_UNIT_COST = 0.8
-SEC_CH_UA = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"'
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 class Regions(StrEnum):
     EKT = 'EKT'
 
