@@ -6,6 +6,7 @@ from enum import StrEnum
 from typing import Final
 
 import requests
+from pydantic import BaseModel
 
 AUTH_CODE: Final = os.environ.get('T2_AUTH_CODE') or str(input('Код авторизации: '))
 DEFAULT_TIMEZONE: Final = 5
@@ -17,6 +18,8 @@ UA: Final = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
 MIN_UNIT_COST = 0.8
 SEC_CH_UA = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+class Regions(StrEnum):
+    EKT = 'EKT'
 
 
 class TrafficType(StrEnum):
@@ -42,6 +45,12 @@ class Emoji(StrEnum):
     SCREAM = 'scream'
     TONGUE = 'tongue'
     ZIPPED = 'zipped'
+
+
+class AvailableForSaleOum(BaseModel):
+    min: int = 0
+    gb: int = 0
+    sms: int = 0
 
 
 def create_order(
@@ -145,6 +154,22 @@ def get_orders(
     ).json()
 
 
+def get_my_traffic(number: str, auth_code: str, region: str):
+    """
+    Получить весь трафик. Сумма доступного и недоступного для продажи трафика.
+
+    :param number: Номер телефона
+    :param auth_code: Код аутентификации
+    :param region: Регион. Доступные значения хранятся в классе Regions
+    :return: Весь трафик
+    """
+    refer = 'lk/remains'
+    return requests.get(
+        f'https://ekt.t2.ru/api/subscribers/{number}/site{region}/rests',
+        headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer)
+    ).json()
+
+
 def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
     return {
         'Accept': 'application/json, text/plain, */*',
@@ -210,3 +235,29 @@ def start_raise_my_orders(
             print(f'Пока есть лот в топе.')
         time.sleep(frequency)
     start_raise_my_orders(number, auth_code, traffic_type, raise_balance, frequency)
+
+
+def get_available_for_sale_traffic(number: str, auth_code: str, region: str) -> AvailableForSaleOum:
+    """
+    Получить количество доступного для продажи трафика в этом абонентском месяце.
+
+    :param number: Номер телефона
+    :param auth_code: Код аутентификации
+    :param region: Регион. Доступные значения хранятся в классе Regions
+    :return: Количество доступного для продажи трафика
+    """
+    my_traffic = get_my_traffic(number, auth_code, region)['data']
+    available_traffic = AvailableForSaleOum()
+
+    for traffic in my_traffic['rests']:
+        if traffic['rollover']:
+            continue
+        remain = int(traffic.get('remain'))
+        match traffic.get('uom'):
+            case 'min':
+                available_traffic.min += remain
+            case 'mb':
+                available_traffic.gb += remain // 1024
+            case 'pcs':
+                available_traffic.sms += remain
+    return available_traffic
