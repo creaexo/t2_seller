@@ -45,7 +45,7 @@ def create_order(
     staff: UOM,
     traffic_type: TrafficType,
 ):
-    refer = 'my'
+    refer = 'stock-exchange/my'
     if not cost:
         cost = value * MIN_UNIT_COST
     json = {
@@ -74,7 +74,7 @@ def update_order(
     cost: int | None,
     emoji: list[Emoji | None],
 ):
-    refer = 'my'
+    refer = 'stock-exchange/my'
     if not cost:
         cost = value * MIN_UNIT_COST
     json = {
@@ -102,7 +102,7 @@ def raise_order(
     order_id: str,
     auth_code: str,
 ):
-    refer = 'my'
+    refer = 'stock-exchange/my'
     json = {'lotId': order_id}
     return requests.put(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/premium',
@@ -115,7 +115,7 @@ def get_my_orders(
     number: str,
     auth_code: str,
 ):
-    refer = 'my'
+    refer = 'stock-exchange/my'
     return requests.get(
         f'https://ekt.t2.ru/api/subscribers/{number}/exchange/lots/created',
         headers=get_headers(auth_code, 5, SEC_CH_UA, UA, refer)
@@ -147,7 +147,7 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str):
         'cache-control': 'no-cache',
         'pragma': 'no-cache',
         'priority': 'u=1, i',
-        'referer': f'https://ekt.t2.ru/stock-exchange/{refer}',
+        'referer': f'https://ekt.t2.ru/{refer}',
         'sec-ch-ua': sec_ch_ua,
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
