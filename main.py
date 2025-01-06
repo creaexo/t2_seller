@@ -100,8 +100,8 @@ def update_order(
 
 
 def get_local_time(time_zone: int):
-    time = datetime.now().astimezone(timezone(timedelta(hours=time_zone)))
-    return time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + time.strftime('%z')
+    time_ = datetime.now().astimezone(timezone(timedelta(hours=time_zone)))
+    return time_.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + time_.strftime('%z')
 
 
 def raise_order(
