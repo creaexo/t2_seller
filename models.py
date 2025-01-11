@@ -41,7 +41,14 @@ class Emoji(StrEnum):
     ZIPPED = 'zipped'
 
 
-class AvailableForSaleOum(BaseModel):
+class AvailableForSaleUOM(BaseModel):
     min: int = 0
     gb: int = 0
     sms: int = 0
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+
+class Currency(StrEnum):
+    RUB = 'rub'
