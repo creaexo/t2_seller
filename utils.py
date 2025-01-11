@@ -20,7 +20,7 @@ def create_order(
     auth_code: str,
     value: int,
     cost: int | None,
-    staff: UOM,
+    uom: UOM,
     traffic_type: TrafficType,
     region: Regions,
 ):
@@ -30,13 +30,13 @@ def create_order(
     json = {
         "volume": {
             "value": value,
-            "uom": staff
+            "uom": uom
         },
         "cost": {
             "amount": cost,
-            "currency": traffic_type
+            "currency": Currency.RUB
         },
-        "trafficType": "voice"
+        "trafficType": traffic_type
     }
     return requests.put(
         f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots/created',
