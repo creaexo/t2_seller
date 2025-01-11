@@ -1,35 +1,39 @@
 import secrets
 import time
 from datetime import datetime, timezone, timedelta
+from typing import Collection
 
 import requests
 
-from const import MIN_UNIT_COST, UA, DEFAULT_TIMEZONE, SEC_CH_UA
+from const import MIN_UNIT_COST, UA, DEFAULT_TIMEZONE, SEC_CH_UA, GB_UNIT_COST, SMS_UNIT_COST
+from errors import UnexpectedUOMVolume
 from models import (
     UOM,
     TrafficType,
-    AvailableForSaleOum,
+    AvailableForSaleUOM,
     Statuses,
     Emoji,
     Regions,
+    Currency,
 )
 
 
 def create_order(
     number: str,
     auth_code: str,
-    value: int,
+    volume: int,
     cost: int | None,
     uom: UOM,
     traffic_type: TrafficType,
     region: Regions,
 ):
     refer = 'stock-exchange/my'
-    if not cost:
-        cost = value * MIN_UNIT_COST
+    min_oum_cost = get_min_oum_cost(uom)
+    if not cost or volume * min_oum_cost > cost:
+        cost = volume * min_oum_cost
     json = {
         "volume": {
-            "value": value,
+            "value": volume,
             "uom": uom
         },
         "cost": {
@@ -47,16 +51,18 @@ def create_order(
 
 def update_order(
     number: str,
-    order_id: str,
     auth_code: str,
-    value: int,
+    order_id: str,
+    uom: UOM,
+    volume: int,
     cost: int | None,
     emoji: list[Emoji | None],
     region: Regions,
 ):
     refer = 'stock-exchange/my'
-    if not cost:
-        cost = value * MIN_UNIT_COST
+    min_oum_cost = get_min_oum_cost(uom)
+    if not cost or volume * min_oum_cost > cost:
+        cost = volume * min_oum_cost
     json = {
         "showSellerName": True,
         "emojis": emoji,
@@ -157,56 +163,7 @@ def get_headers(auth_code, time_zone: int, sec_ch_ua: str, ua: str, refer: str, 
     }
 
 
-def start_raise_my_orders(
-    number: str, auth_code: str, traffic_type: TrafficType, raise_balance: int, frequency: int, region: Regions
-):
-    """
-    Запуск продвижения всех своих лотов.
-
-    :param number: Номер телефона
-    :param auth_code: Код аутентификации
-    :param traffic_type: Тип трафика
-    :param raise_balance: Баланс на продвижение. Этот параметр позволяет исключить большие потери на
-    продвижение во время небольшого спроса, ведь каждый вывод в топ стоит 5р. Больше указанной суммы
-    не будет потрачено.
-    :param frequency: Периодичность продвижения и проверок, находится ли лот в топе.
-    :param region: Регион.
-    """
-    orders = get_my_orders(number, auth_code, region).get('data')
-    active_orders = [
-        order for order in orders
-        if order.get('status') == Statuses.ACTIVE and order.get('trafficType') == traffic_type
-    ]
-    if not active_orders or raise_balance <= 0:
-        return
-    active_orders_ids = {order['id'] for order in active_orders}
-    for order in active_orders:
-        actual_orders = get_orders(
-            number,
-            auth_code,
-            traffic_type,
-            order.get('volume').get('value'),
-            order.get('cost').get('amount'),
-            region
-        ).get('data')
-        actual_orders_ids = {
-            o.get('id') for o in actual_orders
-        }
-        if not (active_orders_ids & actual_orders_ids):
-            order_id = order.get('id')
-            print(f'Продвижение для: {order_id}')
-            raise_order(number, order_id, auth_code, region)
-            raise_balance -= 5
-            if raise_balance <= 0:
-                break
-        else:
-            active_orders.insert(0, order)
-            print(f'Пока есть лот в топе.')
-        time.sleep(frequency)
-    start_raise_my_orders(number, auth_code, traffic_type, raise_balance, frequency, region)
-
-
-def get_available_for_sale_traffic(number: str, auth_code: str, region: Regions) -> AvailableForSaleOum:
+def get_available_for_sale_traffic(number: str, auth_code: str, region: Regions) -> AvailableForSaleUOM:
     """
     Получить количество доступного для продажи трафика в этом абонентском месяце.
 
@@ -216,7 +173,7 @@ def get_available_for_sale_traffic(number: str, auth_code: str, region: Regions)
     :return: Количество доступного для продажи трафика.
     """
     my_traffic = get_my_traffic(number, auth_code, region)['data']
-    available_traffic = AvailableForSaleOum()
+    available_traffic = AvailableForSaleUOM()
 
     for traffic in my_traffic['rests']:
         if traffic['rollover']:
@@ -230,3 +187,166 @@ def get_available_for_sale_traffic(number: str, auth_code: str, region: Regions)
             case 'pcs':
                 available_traffic.sms += remain
     return available_traffic
+
+
+def start_raise_my_orders(
+    number: str,
+    auth_code: str,
+    volume: int,
+    cost: int,
+    traffic_type: TrafficType,
+    raise_balance: int,
+    frequency: int,
+    region: Regions,
+    lower_top: int = 10,
+):
+    """
+    Запуск продвижения всех своих лотов.
+
+    :param number: Номер телефона.
+    :param auth_code: Код аутентификации.
+    :param volume: Количество единиц трафика в ордере.
+    :param cost: Цена ордера.
+    :param traffic_type: Тип трафика.
+    :param raise_balance: Баланс на продвижение. Этот параметр позволяет исключить большие потери на
+    продвижение во время небольшого спроса, ведь каждый вывод в топ стоит 5р. Больше указанной суммы
+    не будет потрачено.
+    :param frequency: Периодичность продвижения и проверок, находится ли лот в топе.
+    :param lower_top: Когда нет ордеров в топе на позиции выше, либо равных этому значению, создаст новый ордер.
+    :param region: Регион.
+    """
+    if raise_balance <= 0:
+        return
+
+    active_orders = [
+        order for order in get_my_active_orders(number, auth_code, traffic_type, region)
+        if order['cost']['amount'] == cost
+    ]
+    if not active_orders:
+        return
+    active_orders_ids = [order['id'] for order in active_orders]
+    for order in active_orders:
+        if int(order['cost']['amount']) != cost:
+            active_orders.remove(order)
+            continue
+        if not are_orders_at_top(number, auth_code, traffic_type, volume, cost, region, active_orders_ids, lower_top):
+            order_id = order['id']
+            print(f'Продвижение для: {order_id}')
+            raise_order(number, order_id, auth_code, region)
+            raise_balance -= 5
+            if raise_balance <= 0:
+                break
+        else:
+            active_orders.insert(0, order)
+            active_orders_ids.insert(0, order['id'])
+            print(f'Пока есть лот в топе.')
+        time.sleep(frequency)
+    start_raise_my_orders(number, auth_code, volume, cost, traffic_type, raise_balance, frequency, region, lower_top)
+
+
+def start_making_sell_orders(
+    number: str,
+    auth_code: str,
+    uom: UOM,
+    traffic_type: TrafficType,
+    volume: int,
+    orders_count: int,
+    frequency: int,
+    emoji: list[Emoji | None],
+    region: Regions,
+    cost: float | None = None,
+    lower_top: int = 10,
+
+):
+    available_traffic: int = get_available_for_sale_traffic(number, auth_code, region)[uom]
+    """
+    Запуск выставления новых ордеров, когда в топе нет других лотов абонента.
+
+    :param number: Номер телефона.
+    :param auth_code: Код аутентификации.
+    :param uom: Название единицы трафика.
+    :param traffic_type: Тип трафика.
+    :param volume: Количество единиц трафика в ордере.
+    :param orders_count: Количество ордеров.
+    :param frequency: Периодичность продвижения и проверок, находится ли какой-нибудь лот в топе.
+    :param emoji: Emoji в ордере.
+    :param cost: Цена одного ордера.
+    :param lower_top: Когда нет ордеров в топе на позиции выше, либо равных этому значению, создаст новый ордер.
+    :param region: Регион.
+    """
+    if volume > available_traffic:
+        print(f'Лот не выставлен. Доступно для продажи: {available_traffic}{uom}')
+        return
+    if (volume * orders_count) > available_traffic:
+        orders_count = available_traffic // volume
+    print(f'Доступно для продажи: {available_traffic}{uom}. Будет выставлено лотов: {orders_count} по {volume}{uom}')
+
+    min_oum_cost = get_min_oum_cost(uom)
+    if not cost or volume * min_oum_cost > cost:
+        cost = int(volume * min_oum_cost)
+
+    active_orders_ids = [order['id'] for order in get_my_active_orders(number, auth_code, traffic_type, region)]
+    for _ in range(orders_count):
+        while are_orders_at_top(number, auth_code, traffic_type, volume, cost, region, active_orders_ids, lower_top):
+            print(f'Пока есть лот в топе.')
+            time.sleep(frequency)
+        order_id = create_order(number, auth_code, volume, cost, uom, traffic_type, region)['data']['id']
+        update_order(number, auth_code, order_id, uom, volume, cost, emoji, region)
+
+        # Проверка, что ордер отображается в продаже. Между запросом и отображением в системе есть задержка, из-за неё,
+        # при следующей итерации не будет учитываться предыдущий ордер, от чего спасает данная проверка.
+        while not are_orders_at_top(number, auth_code, traffic_type, volume, cost, region, [order_id], lower_top):
+            print('пока не появился')
+            time.sleep(1)
+        active_orders_ids.append(order_id)
+        print(f'Создан ордер: {order_id}')
+
+
+def get_min_oum_cost(uom: UOM) -> float | None:
+    match uom:
+        case UOM.MIN:
+            return MIN_UNIT_COST
+        case UOM.GB:
+            return GB_UNIT_COST
+        case UOM.SMS:
+            return SMS_UNIT_COST
+    raise UnexpectedUOMVolume(uom)
+
+
+def get_my_active_orders(
+    number: str,
+    auth_code: str,
+    traffic_type: TrafficType,
+    region: Regions,
+):
+    return [
+        order for order in get_my_orders(number, auth_code, region).get('data')
+        if order.get('status') == Statuses.ACTIVE and order.get('trafficType') == traffic_type
+    ]
+
+
+def are_orders_at_top(
+    number: str,
+    auth_code: str,
+    traffic_type: TrafficType,
+    volume: int,
+    cost: int,
+    region: Regions,
+    orders_ids: Collection[str],
+    lower_top: int = 10,
+) -> bool:
+    """
+    Узнать находятся ли какие-нибудь из проверяемых ордеров в топе.
+
+    :param number: Номер телефона.
+    :param auth_code: Код аутентификации.
+    :param traffic_type: Тип трафика.
+    :param volume: Количество единиц трафика в ордере.
+    :param cost: Цена ордера.
+    :param region: Регион.
+    :param orders_ids: Последовательность из id ордеров, которые будут искаться в топе.
+    :param lower_top: Когда нет ордеров в топе на позиции выше, либо равных этому значению, вернёт False.
+    :return: True, если хотя-бы один из проверяемых ордеров находится в топе.
+    """
+    actual_orders = get_orders(number, auth_code, traffic_type, volume, cost, region, limit=lower_top).get('data')
+    return bool(set(orders_ids) & {o['id'] for o in actual_orders})
