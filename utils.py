@@ -6,7 +6,7 @@ from typing import Collection
 import requests
 
 from const import MIN_UNIT_COST, UA, DEFAULT_TIMEZONE, SEC_CH_UA, GB_UNIT_COST, SMS_UNIT_COST
-from errors import UnexpectedUOMVolume
+from errors import UnexpectedUOMValue
 from models import (
     UOM,
     TrafficType,
@@ -310,7 +310,7 @@ def get_min_oum_cost(uom: UOM) -> float | None:
             return GB_UNIT_COST
         case UOM.SMS:
             return SMS_UNIT_COST
-    raise UnexpectedUOMVolume(uom)
+    raise UnexpectedUOMValue(uom)
 
 
 def get_my_active_orders(
