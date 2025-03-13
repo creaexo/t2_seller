@@ -21,10 +21,10 @@ from models import (
 def create_order(
     number: str,
     auth_code: str,
-    volume: int,
-    cost: int | None,
     uom: UOM,
     traffic_type: TrafficType,
+    volume: int,
+    cost: int | None,
     region: Regions,
 ):
     refer = 'stock-exchange/my'
@@ -52,10 +52,10 @@ def create_order(
 def update_order(
     number: str,
     auth_code: str,
-    order_id: str,
     uom: UOM,
     volume: int,
     cost: int | None,
+    order_id: str,
     emoji: list[Emoji | None],
     region: Regions,
 ):
@@ -85,8 +85,8 @@ def get_local_time(time_zone: int):
 
 def raise_order(
     number: str,
-    order_id: str,
     auth_code: str,
+    order_id: str,
     region: Regions,
 ):
     refer = 'stock-exchange/my'
@@ -122,7 +122,8 @@ def get_orders(
 ):
     refer = 'internet'
     return requests.get(
-        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots?trafficType={traffic_type}&volume={volume}&cost={cost}&offset={offset}&limit={limit}',
+        f'https://{region}.t2.ru/api/subscribers/{number}/exchange/lots?trafficType={traffic_type}'
+        f'&volume={volume}&cost={cost}&offset={offset}&limit={limit}',
         headers=get_headers(auth_code, DEFAULT_TIMEZONE, SEC_CH_UA, UA, refer, region)
     ).json()
 
@@ -192,9 +193,9 @@ def get_available_for_sale_traffic(number: str, auth_code: str, region: Regions)
 def start_raise_my_orders(
     number: str,
     auth_code: str,
+    traffic_type: TrafficType,
     volume: int,
     cost: int,
-    traffic_type: TrafficType,
     raise_balance: int,
     frequency: int,
     region: Regions,
@@ -205,9 +206,9 @@ def start_raise_my_orders(
 
     :param number: Номер телефона.
     :param auth_code: Код аутентификации.
+    :param traffic_type: Тип трафика.
     :param volume: Количество единиц трафика в ордере.
     :param cost: Цена ордера.
-    :param traffic_type: Тип трафика.
     :param raise_balance: Баланс на продвижение. Этот параметр позволяет исключить большие потери на
     продвижение во время небольшого спроса, ведь каждый вывод в топ стоит 5р. Больше указанной суммы
     не будет потрачено.
@@ -232,7 +233,7 @@ def start_raise_my_orders(
         if not are_orders_at_top(number, auth_code, traffic_type, volume, cost, region, active_orders_ids, lower_top):
             order_id = order['id']
             print(f'Продвижение для: {order_id}')
-            raise_order(number, order_id, auth_code, region)
+            print(raise_order(number, auth_code, order_id, region).json())
             raise_balance -= 5
             if raise_balance <= 0:
                 break
@@ -241,7 +242,7 @@ def start_raise_my_orders(
             active_orders_ids.insert(0, order['id'])
             print(f'Пока есть лот в топе.')
         time.sleep(frequency)
-    start_raise_my_orders(number, auth_code, volume, cost, traffic_type, raise_balance, frequency, region, lower_top)
+    start_raise_my_orders(number, auth_code, traffic_type, volume, cost, raise_balance, frequency, region, lower_top)
 
 
 def start_making_sell_orders(
@@ -251,8 +252,8 @@ def start_making_sell_orders(
     traffic_type: TrafficType,
     volume: int,
     orders_count: int,
-    frequency: int,
     emoji: list[Emoji | None],
+    frequency: int,
     region: Regions,
     cost: float | None = None,
     lower_top: int = 10,
@@ -268,8 +269,8 @@ def start_making_sell_orders(
     :param traffic_type: Тип трафика.
     :param volume: Количество единиц трафика в ордере.
     :param orders_count: Количество ордеров.
-    :param frequency: Периодичность продвижения и проверок, находится ли какой-нибудь лот в топе.
     :param emoji: Emoji в ордере.
+    :param frequency: Периодичность продвижения и проверок, находится ли какой-нибудь лот в топе.
     :param cost: Цена одного ордера.
     :param lower_top: Когда нет ордеров в топе на позиции выше, либо равных этому значению, создаст новый ордер.
     :param region: Регион.
@@ -290,8 +291,8 @@ def start_making_sell_orders(
         while are_orders_at_top(number, auth_code, traffic_type, volume, cost, region, active_orders_ids, lower_top):
             print(f'Пока есть лот в топе.')
             time.sleep(frequency)
-        order_id = create_order(number, auth_code, volume, cost, uom, traffic_type, region)['data']['id']
-        update_order(number, auth_code, order_id, uom, volume, cost, emoji, region)
+        order_id = create_order(number, auth_code, uom, traffic_type, volume, cost,  region)['data']['id']
+        update_order(number, auth_code, uom, volume, cost, order_id, emoji, region)
 
         # Проверка, что ордер отображается в продаже. Между запросом и отображением в системе есть задержка, из-за неё,
         # при следующей итерации не будет учитываться предыдущий ордер, от чего спасает данная проверка.
